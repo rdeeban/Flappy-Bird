@@ -17,6 +17,9 @@
 
     function startGame() {
         myGamePiece = new component(30, 30, "./resources/yellowbird-downflap.png", 10, 120, "image");
+        // myScoreFirstDigit = new component(30, 30, "./resources/0.png", 205, 10, "image");
+        // myScoreSecondDigit = new component(30, 30, "./resources/0.png", 240, 10, "image");
+        myScore = new scoreComponent("./resources", 240, 10, 60, 30);
         myGamePiece.gravity = 0.05;
         myScore = new component("30px", "Consolas", "black", 280, 40, "text");
         myGameArea.start();
@@ -41,6 +44,84 @@
         clear : function() {
             this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
         }
+    }
+
+    function scoreComponent(directoryToDigitImages, xOffset, yOffset, digitWidth, digitHeight) {
+        this.images = [];
+        for (let i = 0; i < filePathsToDigitImages.length; i++) {
+            let image = new Image();
+            image.src = filePathsToDigitImages[i];
+            this.images.push(image);
+        }
+        this.currentlyUsedImageIndex = 0;
+        this.image = this.images[this.currentlyUsedImageIndex]; //new Image();
+        // this.image.src = filePathsToDigitImages[0];
+        // this.type = type;
+        // if (type == "image") {
+        //     this.image = new Image();
+        //     this.image.src = color;
+        // }
+        this.width = width;
+        this.height = height;
+        this.value = 0;
+        // this.speedX = 0;
+        // this.speedY = 0;
+        this.xs = [xOffset];// , xOffset + digitWidth];
+        // this.x = xOffset;
+        this.ys = [yOffset];//, yOffset + digitHeight];
+        // this.y = yOffset;
+        // this.gravity = 0;
+        // this.gravitySpeed = 0;
+        this.update = function() {
+
+
+            ctx = myGameArea.context;
+            ctx.drawImage(this.image,
+                this.x,
+                this.y,
+                this.width, this.height);
+            // if (this.type == "text") {
+            //     ctx.font = this.width + " " + this.height;
+            //     ctx.fillStyle = color;
+            //     ctx.fillText(this.text, this.x, this.y);
+            // } else if (this.type == "image") {
+            //     ctx.drawImage(this.image,
+            //         this.x,
+            //         this.y,
+            //         this.width, this.height);
+            // } else {
+            //     ctx.fillStyle = color;
+            //     ctx.fillRect(this.x, this.y, this.width, this.height);
+            // }
+        }
+        // this.newPos = function() {
+            // this.gravitySpeed += this.gravity;
+            // this.x += this.speedX;
+            // this.y += this.speedY + this.gravitySpeed;
+            // this.hitBottom();
+        // }
+        // this.hitBottom = function() {
+        //     var rockbottom = myGameArea.canvas.height - this.height;
+        //     if (this.y > rockbottom) {
+        //         this.y = rockbottom;
+        //         this.gravitySpeed = 0;
+        //     }
+        // }
+        // this.crashWith = function(otherobj) {
+        //     var myleft = this.x;
+        //     var myright = this.x + (this.width);
+        //     var mytop = this.y;
+        //     var mybottom = this.y + (this.height);
+        //     var otherleft = otherobj.x;
+        //     var otherright = otherobj.x + (otherobj.width);
+        //     var othertop = otherobj.y;
+        //     var otherbottom = otherobj.y + (otherobj.height);
+        //     var crash = true;
+        //     if ((mybottom < othertop) || (mytop > otherbottom) || (myright < otherleft) || (myleft > otherright)) {
+        //         crash = false;
+        //     }
+        //     return crash;
+        // }
     }
 
     function component(width, height, color, x, y, type) {
@@ -128,10 +209,14 @@
             myObstacles[i].x += -1;
             myObstacles[i].update();
         }
-        myScore.text = "SCORE: " + myGameArea.frameNo;
-        myScore.update();
+        // myScore.text = "SCORE: " + myGameArea.frameNo;
+        // myScore.update();
         myGamePiece.newPos();
         myGamePiece.update();
+        // myScoreFirstDigit.newPos();
+        myScore.update(myGameArea.frameNo);
+        // myScoreSecondDigit.newPos();
+        // myScoreSecondDigit.update();
     }
 
     function everyinterval(n) {

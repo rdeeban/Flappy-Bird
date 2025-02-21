@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
+    <style>
+        canvas {
+            border:1px solid #d3d3d3;
+            background-color: #f1f1f1;
+        }
+    </style>
+</head>
+<body onload="startGame()">
+<script>
+    let myTitleScreen;
+    let myGameScreen;
+    let myBird;
+    let myPipes;
+
+    function startGame() {
+        myTitleScreen = new TitleScreen(288, 512);
+        myGameScreen = new GameScreen(288, 512);
+        myBird = new Bird(69, 262.5, 22.5, 35);
+        myPipes = [];
+        myGameArea.start();
+    }
+
+    let myGameArea = {
+        canvas : document.createElement("canvas"),
+        start : function() {
+            this.canvas.width = 288;
+            this.canvas.height = 512;
+            this.context = this.canvas.getContext("2d");
+            document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+            this.frameNo = 0;
+            this.screen = "titleScreen";
+            this.canvas.addEventListener('mousedown', function (_) {
+                if (myGameArea.screen === "titleScreen") {
+                    myGameArea.screen = "gameScreen";
+                }
+            });
+
+            setInterval(updateGame, 20);
+        },
+        clear : function() {
+            this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        }
+    }
+
+    function updateGame() {
+        myGameArea.clear();
+        myGameArea.frameNo += 1;
+        if (myGameArea.screen === "titleScreen") {
+            myTitleScreen.update(myGameArea.frameNo);
+            myBird.update(myGameArea.frameNo);
+        } else if (myGameArea.screen === "gameScreen") {
+            myGameScreen.update(myGameArea.frameNo);
+            myBird.update(myGameArea.frameNo);
+            if (myGameArea.frameNo % 150 === 0) {
+                myPipes.push(new Pipe("down", myGameArea.canvas.width, 0, 350, 55));
+            }
+
+            for (let i = 0; i < myPipes.length; i += 1) {
+                myPipes[i].x -= 1;
+                myPipes[i].update();
+                if (myPipes[i].x < myBird.x) {
+                    myGameScreen.numPipesPassed += 1;
+                }
+            }
+        } else {
+            throw null;
+        }
+    }
+
+    function TitleScreen(height, width) {
+        let backgroundDayImage = new Image();
+        backgroundDayImage.src = "/resources/background-day.png";
+        let messageImage = new Image();
+        messageImage.src = "/resources/message.png";
+        let baseImage = new Image();
+        baseImage.src = "/resources/base.png";
+
+        this.update = function() {
+            let ctx = myGameArea.context;
+            ctx.drawImage(backgroundDayImage, 0, 0, height, width);
+            ctx.drawImage(messageImage, 45, 100, height / 1.5, width / 2);
+            ctx.drawImage(baseImage, 0, 407, height, width / 4);
+        }
+    }
+
+    function GameScreen(height, width) {
+        let backgroundDayImage = new Image();
+        backgroundDayImage.src = "/resources/background-day.png";
+        let backgroundNightImage = new Image();
+        backgroundNightImage.src = "/resources/background-night.png";
+        let baseImage = new Image();
+        baseImage.src = "/resources/base.png";
+
+        function isDayTime() {
+            const now = new Date();
+            const currentHour = now.getHours();
+            return currentHour >= 6 && currentHour < 18;
+        }
+
+        const isDay = isDayTime();
+        let digitFileNames = [
+            "0.png",
+            "1.png",
+            "2.png",
+            "3.png",
+            "4.png",
+            "5.png",
+            "6.png",
+            "7.png",
+            "8.png",
+            "9.png"
+        ];
+
+        let digitImages = [];
+        for (let i = 0; i < digitFileNames.length; i++) {
+            let digitImage = new Image();
+            digitImage.src = "/resources/" + digitFileNames[i];
+            digitImages.push(digitImage);
+        }
+
+        function prepend(value, array) {
+            let newArray = array.slice();
+            newArray.unshift(value);
+            return newArray;
+        }
+
+        function getDigits(frameNo) {
+            let currentFrameNo = frameNo;
+            let digits = [];
+            while (currentFrameNo > 0) {
+                digits = prepend(currentFrameNo % 10, digits);
+                currentFrameNo = Math.floor(currentFrameNo / 10);
+            }
+
+            return digits;
+        }
+
+        this.numPipesPassed = 0;
+        this.update = function(frameNo) {
+            let ctx = myGameArea.context;
+            ctx.drawImage(isDay ? backgroundDayImage : backgroundNightImage, 0, 0, height, width);
+            ctx.drawImage(baseImage, 0, 407, height, width / 4);
+            let digits = getDigits(this.numPipesPassed);
+            for (let i = digits.length - 1; i > -1; i--) {
+                let digit = digits[i];
+                ctx.drawImage(digitImages[digit], 89 + i*40, 10, 35, 35);
+            }
+        }
+    }
+
+    function Bird(x, y, height, width) {
+        this.x = x;
+        this.y = y;
+        this.height = height;
+        this.width = width;
+        let birdImageFileNames = [
+            "yellowbird-downflap.png",
+            "yellowbird-midflap.png",
+            "yellowbird-upflap.png",
+            "yellowbird-midflap.png"
+        ];
+
+        let birdImages = [];
+        for (let i = 0; i < birdImageFileNames.length; i++) {
+            let birdImage = new Image();
+            birdImage.src = "/resources/" + birdImageFileNames[i];
+            birdImages.push(birdImage);
+        }
+
+        this.update = function(frameNo) {
+            myGameArea.context.drawImage(birdImages[Math.floor((frameNo / 4.5) % 4)], this.x, this.y, this.width, this.height);
+        }
+    }
+
+    function Pipe(type, x, y, height, width) {
+        this.image = new Image();
+        if (type === "up") {
+            this.image.src = "/resources/pipe-green-u.png";
+        }
+        else if (type === "down") {
+            this.image.src = "/resources/pipe-green-d.png";
+        }
+
+        this.width = width;
+        this.height = height;
+        this.x = x;
+        this.y = y;
+        this.update = function() {
+            let ctx = myGameArea.context;
+            ctx.drawImage(this.image,
+                this.x,
+                this.y,
+                this.width, this.height);
+        }
+    }
+</script>
+<br>
+</body>
+</html>

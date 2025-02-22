@@ -12,8 +12,8 @@
 <body onload="main()">
 <script>
     let myGame;
-    let myTitleScreenSet;
-    let myGameScreenSet;
+    let myTitleScreen;
+    let myGameScreen;
     let myBird;
     let myPipes;
     let myFrameNo;
@@ -21,10 +21,18 @@
     let myCanvas;
     const CANVAS_HEIGHT = 512;
     const CANVAS_WIDTH = 288;
-    const SCREEN_TITLE_SCREEN = "titleScreen";
-    const SCREEN_GAME_SCREEN = "gameScreen";
-    const FACING_DIRECTION_UP = "up";
-    const FACING_DIRECTION_DOWN = "down";
+    const Screen = Object.freeze({
+       TITLE: 1,
+       GAME: 2
+    });
+    const BIRD_INITIAL_X = 69;
+    const BIRD_INITIAL_Y = 253;
+    const BIRD_INITIAL_HEIGHT = 24.5;
+    const BIRD_INITIAL_WIDTH = 40;
+    // const PipeDirection = Object.freeze({
+    //     UP: 1,
+    //     DOWN: 2
+    // });
 
     function main() {
         myGame = new Game();
@@ -37,15 +45,15 @@
             myCanvas.height = CANVAS_HEIGHT;
             myCanvas.width = CANVAS_WIDTH;
             document.body.insertBefore(myCanvas, document.body.childNodes[0]);
-            myTitleScreenSet = new TitleScreen();
-            myGameScreenSet = new GameScreen();
-            myBird = new Bird(69, 253, 24.5, 40);
+            myTitleScreen = new TitleScreen();
+            myGameScreen = new GameScreen();
+            myBird = new Bird(BIRD_INITIAL_X, BIRD_INITIAL_Y, BIRD_INITIAL_HEIGHT, BIRD_INITIAL_WIDTH);
             myPipes = [];
             myFrameNo = 0;
-            myScreen = SCREEN_TITLE_SCREEN;
-            myCanvas.addEventListener('mousedown', function (_) {
-                if (myScreen === SCREEN_TITLE_SCREEN) {
-                    myScreen = SCREEN_GAME_SCREEN;
+            myScreen = Screen.TITLE;
+            myCanvas.addEventListener('mousedown', function () {
+                if (myScreen === Screen.TITLE) {
+                    myScreen = Screen.GAME;
                 }
             });
 
@@ -55,11 +63,11 @@
         this.update = function() {
             this.clear();
             myFrameNo++;
-            if (myScreen === "titleScreen") {
-                myTitleScreenSet.update();
+            if (myScreen === Screen.TITLE) {
+                myTitleScreen.update();
                 myBird.update(myFrameNo);
-            } else if (myScreen === "gameScreen") {
-                myGameScreenSet.update();
+            } else if (myScreen === Screen.GAME) {
+                myGameScreen.update();
                 myBird.update(myFrameNo);
             } else {
                 throw new Error("The value of myScreen is not recognized.");
@@ -94,6 +102,7 @@
         backgroundNightImage.src = "/resources/background-night.png";
         let baseImage = new Image();
         baseImage.src = "/resources/base.png";
+        this.numPipesPassed = 0;
 
         function isDayTime() {
             const now = new Date();
@@ -122,32 +131,13 @@
             digitImages.push(digitImage);
         }
 
-        function prepend(value, array) {
-            let newArray = array.slice();
-            newArray.unshift(value);
-            return newArray;
-        }
-
-        function getDigits(frameNo) {
-            let currentFrameNo = frameNo;
-            let digits = [];
-            while (currentFrameNo > 0) {
-                digits = prepend(currentFrameNo % 10, digits);
-                currentFrameNo = Math.floor(currentFrameNo / 10);
-            }
-
-            return digits;
-        }
-
-        this.numPipesPassed = 0;
         this.update = function() {
             let context = myCanvas.getContext('2d');
             context.drawImage(isDay ? backgroundDayImage : backgroundNightImage, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
             context.drawImage(baseImage, 0, 400, CANVAS_WIDTH, CANVAS_HEIGHT * 0.3);
-            let digits = getDigits(this.numPipesPassed);
+            let digits = Array.from(String(this.numPipesPassed), x => Number(x));
             for (let i = digits.length - 1; i > -1; i--) {
-                let digit = digits[i];
-                context.drawImage(digitImages[digit], 89 + i*40, 10, 35, 35);
+                context.drawImage(digitImages[digits[i]], 89 + i*40, 10, 35, 35);
             }
         }
     }
@@ -155,6 +145,10 @@
     function Bird(x, y, height, width) {
         this.x = x;
         this.y = y;
+        this.speedX = 0;
+        this.speedY = 0;
+        this.gravity = 0.05;
+        this.gravitySpeed = 0;
         this.height = height;
         this.width = width;
         const birdImageFileNames = [
@@ -174,14 +168,20 @@
         this.update = function(frameNo) {
             myCanvas.getContext('2d').drawImage(birdImages[Math.floor((frameNo / 4.5) % 4)], this.x, this.y, this.width, this.height);
         }
+
+        this.newPosition = function() {
+            this.gravitySpeed += this.gravity;
+            this.x += this.speedX;
+            this.y += this.speedY + this.gravitySpeed;
+        }
     }
 
     function Pipe(facingDirection, x, y, height, width) {
         this.image = new Image();
-        if (facingDirection === FACING_DIRECTION_UP) {
+        if (facingDirection === PIPE_FACING_DIRECTION_UP) {
             this.image.src = "/resources/pipe-green-u.png";
         }
-        else if (facingDirection === FACING_DIRECTION_DOWN) {
+        else if (facingDirection === PIPE_FACING_DIRECTION_DOWN) {
             this.image.src = "/resources/pipe-green-d.png";
         } else {
             throw new Error("The value of facingDirection is not recognized.");

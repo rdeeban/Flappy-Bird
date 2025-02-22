@@ -5,74 +5,73 @@
     <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
     <style>
         canvas {
-            border:1px solid #d3d3d3;
-            background-color: #f1f1f1;
+            border-radius: 5px;
         }
     </style>
 </head>
-<body onload="startGame()">
+<body onload="main()">
 <script>
-    let myTitleScreen;
-    let myGameScreen;
+    let myGame;
+    let myTitleScreenSet;
+    let myGameScreenSet;
     let myBird;
     let myPipes;
+    let myFrameNo;
+    let myScreen;
+    let myCanvas;
+    const CANVAS_HEIGHT = 512;
+    const CANVAS_WIDTH = 288;
+    const SCREEN_TITLE_SCREEN = "titleScreen";
+    const SCREEN_GAME_SCREEN = "gameScreen";
+    const FACING_DIRECTION_UP = "up";
+    const FACING_DIRECTION_DOWN = "down";
 
-    function startGame() {
-        myTitleScreen = new TitleScreen(288, 512);
-        myGameScreen = new GameScreen(288, 512);
-        myBird = new Bird(69, 262.5, 22.5, 35);
-        myPipes = [];
-        myGameArea.start();
+    function main() {
+        myGame = new Game();
+        myGame.start();
     }
 
-    let myGameArea = {
-        canvas : document.createElement("canvas"),
-        start : function() {
-            this.canvas.width = 288;
-            this.canvas.height = 512;
-            this.context = this.canvas.getContext("2d");
-            document.body.insertBefore(this.canvas, document.body.childNodes[0]);
-            this.frameNo = 0;
-            this.screen = "titleScreen";
-            this.canvas.addEventListener('mousedown', function (_) {
-                if (myGameArea.screen === "titleScreen") {
-                    myGameArea.screen = "gameScreen";
+    function Game() {
+        this.start = function() {
+            myCanvas = document.createElement("canvas");
+            myCanvas.height = CANVAS_HEIGHT;
+            myCanvas.width = CANVAS_WIDTH;
+            document.body.insertBefore(myCanvas, document.body.childNodes[0]);
+            myTitleScreenSet = new TitleScreen();
+            myGameScreenSet = new GameScreen();
+            myBird = new Bird(69, 253, 24.5, 40);
+            myPipes = [];
+            myFrameNo = 0;
+            myScreen = SCREEN_TITLE_SCREEN;
+            myCanvas.addEventListener('mousedown', function (_) {
+                if (myScreen === SCREEN_TITLE_SCREEN) {
+                    myScreen = SCREEN_GAME_SCREEN;
                 }
             });
 
-            setInterval(updateGame, 20);
-        },
-        clear : function() {
-            this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            setInterval(this.update, 20);
+        };
+
+        this.update = function() {
+            this.clear();
+            myFrameNo++;
+            if (myScreen === "titleScreen") {
+                myTitleScreenSet.update();
+                myBird.update(myFrameNo);
+            } else if (myScreen === "gameScreen") {
+                myGameScreenSet.update();
+                myBird.update(myFrameNo);
+            } else {
+                throw new Error("The value of myScreen is not recognized.");
+            }
+        }.bind(this);
+
+        this.clear = function() {
+            myCanvas.getContext('2d').clearRect(0, 0, myCanvas.width, myCanvas.height);
         }
     }
 
-    function updateGame() {
-        myGameArea.clear();
-        myGameArea.frameNo += 1;
-        if (myGameArea.screen === "titleScreen") {
-            myTitleScreen.update(myGameArea.frameNo);
-            myBird.update(myGameArea.frameNo);
-        } else if (myGameArea.screen === "gameScreen") {
-            myGameScreen.update(myGameArea.frameNo);
-            myBird.update(myGameArea.frameNo);
-            if (myGameArea.frameNo % 150 === 0) {
-                myPipes.push(new Pipe("down", myGameArea.canvas.width, 0, 350, 55));
-            }
-
-            for (let i = 0; i < myPipes.length; i += 1) {
-                myPipes[i].x -= 1;
-                myPipes[i].update();
-                if (myPipes[i].x < myBird.x) {
-                    myGameScreen.numPipesPassed += 1;
-                }
-            }
-        } else {
-            throw null;
-        }
-    }
-
-    function TitleScreen(height, width) {
+    function TitleScreen() {
         let backgroundDayImage = new Image();
         backgroundDayImage.src = "/resources/background-day.png";
         let messageImage = new Image();
@@ -81,14 +80,14 @@
         baseImage.src = "/resources/base.png";
 
         this.update = function() {
-            let ctx = myGameArea.context;
-            ctx.drawImage(backgroundDayImage, 0, 0, height, width);
-            ctx.drawImage(messageImage, 45, 100, height / 1.5, width / 2);
-            ctx.drawImage(baseImage, 0, 407, height, width / 4);
+            let context = myCanvas.getContext('2d');
+            context.drawImage(backgroundDayImage, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            context.drawImage(messageImage, 45, 75, CANVAS_WIDTH * 0.7, CANVAS_HEIGHT * 0.55);
+            context.drawImage(baseImage, 0, 400, CANVAS_WIDTH, CANVAS_HEIGHT * 0.3);
         }
     }
 
-    function GameScreen(height, width) {
+    function GameScreen() {
         let backgroundDayImage = new Image();
         backgroundDayImage.src = "/resources/background-day.png";
         let backgroundNightImage = new Image();
@@ -141,14 +140,14 @@
         }
 
         this.numPipesPassed = 0;
-        this.update = function(frameNo) {
-            let ctx = myGameArea.context;
-            ctx.drawImage(isDay ? backgroundDayImage : backgroundNightImage, 0, 0, height, width);
-            ctx.drawImage(baseImage, 0, 407, height, width / 4);
+        this.update = function() {
+            let context = myCanvas.getContext('2d');
+            context.drawImage(isDay ? backgroundDayImage : backgroundNightImage, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            context.drawImage(baseImage, 0, 400, CANVAS_WIDTH, CANVAS_HEIGHT * 0.3);
             let digits = getDigits(this.numPipesPassed);
             for (let i = digits.length - 1; i > -1; i--) {
                 let digit = digits[i];
-                ctx.drawImage(digitImages[digit], 89 + i*40, 10, 35, 35);
+                context.drawImage(digitImages[digit], 89 + i*40, 10, 35, 35);
             }
         }
     }
@@ -158,7 +157,7 @@
         this.y = y;
         this.height = height;
         this.width = width;
-        let birdImageFileNames = [
+        const birdImageFileNames = [
             "yellowbird-downflap.png",
             "yellowbird-midflap.png",
             "yellowbird-upflap.png",
@@ -173,26 +172,28 @@
         }
 
         this.update = function(frameNo) {
-            myGameArea.context.drawImage(birdImages[Math.floor((frameNo / 4.5) % 4)], this.x, this.y, this.width, this.height);
+            myCanvas.getContext('2d').drawImage(birdImages[Math.floor((frameNo / 4.5) % 4)], this.x, this.y, this.width, this.height);
         }
     }
 
-    function Pipe(type, x, y, height, width) {
+    function Pipe(facingDirection, x, y, height, width) {
         this.image = new Image();
-        if (type === "up") {
+        if (facingDirection === FACING_DIRECTION_UP) {
             this.image.src = "/resources/pipe-green-u.png";
         }
-        else if (type === "down") {
+        else if (facingDirection === FACING_DIRECTION_DOWN) {
             this.image.src = "/resources/pipe-green-d.png";
+        } else {
+            throw new Error("The value of facingDirection is not recognized.");
         }
 
-        this.width = width;
         this.height = height;
+        this.width = width;
         this.x = x;
         this.y = y;
         this.update = function() {
-            let ctx = myGameArea.context;
-            ctx.drawImage(this.image,
+            let context = myCanvas.getContext('2d');
+            context.drawImage(this.image,
                 this.x,
                 this.y,
                 this.width, this.height);

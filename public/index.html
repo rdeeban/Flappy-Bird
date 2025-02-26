@@ -17,6 +17,7 @@
     let myBird;
     let myPipes;
     let myFrameNo;
+    let myPipeIdsForPassedPipes;
     let myScreen;
     let myCanvas;
     const CANVAS_HEIGHT = 512;
@@ -29,10 +30,12 @@
     const BIRD_INITIAL_Y = 253;
     const BIRD_INITIAL_HEIGHT = 24.5;
     const BIRD_INITIAL_WIDTH = 40;
-    // const PipeDirection = Object.freeze({
-    //     UP: 1,
-    //     DOWN: 2
-    // });
+    const NUM_FRAMES_TIL_NEXT_PIPE = 300;
+    const PipeDirection = Object.freeze({
+        UP: 1,
+        DOWN: 2
+    });
+    const GAP_AMOUNT = 50;
 
     function main() {
         myGame = new Game();
@@ -50,26 +53,82 @@
             myBird = new Bird(BIRD_INITIAL_X, BIRD_INITIAL_Y, BIRD_INITIAL_HEIGHT, BIRD_INITIAL_WIDTH);
             myPipes = [];
             myFrameNo = 0;
+            myPipeIdsForPassedPipes = [];
             myScreen = Screen.TITLE;
             myCanvas.addEventListener('mousedown', function () {
                 if (myScreen === Screen.TITLE) {
                     myScreen = Screen.GAME;
+                } else if (myScreen === Screen.GAME) {
+                    myBird.gravity = -0.5;
+                }
+            });
+            myCanvas.addEventListener('mouseup', function () {
+                if (myScreen === Screen.GAME) {
+                    myBird.gravity = 0.2;
                 }
             });
 
             setInterval(this.update, 20);
         };
 
+        let baseImage = new Image();
+        baseImage.src = "/resources/base.png";
+        let gameOver = false;
         this.update = function() {
-            this.clear();
-            myFrameNo++;
             if (myScreen === Screen.TITLE) {
+                this.clear();
+                myFrameNo++;
                 myTitleScreen.update();
                 myBird.update(myFrameNo);
-            } else if (myScreen === Screen.GAME) {
-                myGameScreen.update();
-                myBird.update(myFrameNo);
-            } else {
+            }
+            else if (myScreen === Screen.GAME) {
+                if (myBird.y + myBird.height - 3 > 400) {
+                    let gameOverImage = new Image();
+                    gameOverImage.src = "/resources/gameover.png";
+                    myCanvas.getContext('2d').drawImage(gameOverImage, CANVAS_WIDTH / 2 - 100, CANVAS_HEIGHT / 2 - 75, 200, 100);
+                } else {
+                    this.clear();
+                    myFrameNo++;
+                    for (let i = 0; i < myPipes.length; i += 2) {
+                        if (myBird.y > myPipes[i + 1].y + myPipes[i + 1].height &&
+                            myBird.y + myBird.height < myPipes[i].y &&
+                            myBird.x > myPipes[i].x + myPipes[i].width) {
+                            if (!myPipeIdsForPassedPipes.includes(myPipes[i].pipeId)) {
+                                myPipeIdsForPassedPipes.push(myPipes[i].pipeId);
+                            }
+                        } else {
+                            let gameOverImage = new Image();
+                            gameOverImage.src = "/resources/gameover.png";
+                            myCanvas.getContext('2d').drawImage(gameOverImage, CANVAS_WIDTH / 2 - 100, CANVAS_HEIGHT / 2 - 75, 200, 100);
+                            // gameOver = true;
+                            // return;
+                        }
+                    }
+
+                    myGameScreen.update();
+                    myBird.update(myFrameNo);
+                    if (myFrameNo % NUM_FRAMES_TIL_NEXT_PIPE === 0) {
+                        let pipeX = CANVAS_WIDTH;
+                        let pipeYLeastValue = CANVAS_HEIGHT * 0.2;
+                        let pipeYGreatestValue = CANVAS_HEIGHT * 0.7;
+                        let pipeY = pipeYLeastValue + Math.random() * (pipeYGreatestValue - pipeYLeastValue);
+                        let myUpwardFacingPipe = new Pipe(PipeDirection.UP, pipeX, pipeY, 350, 55);
+                        myPipes.push(myUpwardFacingPipe);
+                        pipeY -= myUpwardFacingPipe.height + GAP_AMOUNT * (1 + Math.random());
+                        let myDownwardFacingPipe = new Pipe(PipeDirection.DOWN, pipeX, pipeY, 350, 55);
+                        myPipes.push(myDownwardFacingPipe);
+                    }
+
+                    for (let i = 0; i < myPipes.length; i++) {
+                        myPipes[i].x -= 1;
+                        myPipes[i].update();
+                    }
+
+                    myCanvas.getContext('2d').drawImage(baseImage, 0, 400, CANVAS_WIDTH, CANVAS_HEIGHT * 0.3);
+                    myBird.newPosition();
+                }
+            }
+            else {
                 throw new Error("The value of myScreen is not recognized.");
             }
         }.bind(this);
@@ -100,8 +159,6 @@
         backgroundDayImage.src = "/resources/background-day.png";
         let backgroundNightImage = new Image();
         backgroundNightImage.src = "/resources/background-night.png";
-        let baseImage = new Image();
-        baseImage.src = "/resources/base.png";
         this.numPipesPassed = 0;
 
         function isDayTime() {
@@ -134,10 +191,10 @@
         this.update = function() {
             let context = myCanvas.getContext('2d');
             context.drawImage(isDay ? backgroundDayImage : backgroundNightImage, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-            context.drawImage(baseImage, 0, 400, CANVAS_WIDTH, CANVAS_HEIGHT * 0.3);
+            this.numPipesPassed = myPipeIdsForPassedPipes.length;
             let digits = Array.from(String(this.numPipesPassed), x => Number(x));
             for (let i = digits.length - 1; i > -1; i--) {
-                context.drawImage(digitImages[digits[i]], 89 + i*40, 10, 35, 35);
+                context.drawImage(digitImages[digits[i]], 130 + i*40, 10, 35, 35);
             }
         }
     }
@@ -147,7 +204,7 @@
         this.y = y;
         this.speedX = 0;
         this.speedY = 0;
-        this.gravity = 0.05;
+        this.gravity = 0.2;
         this.gravitySpeed = 0;
         this.height = height;
         this.width = width;
@@ -176,12 +233,14 @@
         }
     }
 
+    let PIPE_ID = 0;
     function Pipe(facingDirection, x, y, height, width) {
+        this.pipeId = PIPE_ID++;
         this.image = new Image();
-        if (facingDirection === PIPE_FACING_DIRECTION_UP) {
+        if (facingDirection === PipeDirection.UP) {
             this.image.src = "/resources/pipe-green-u.png";
         }
-        else if (facingDirection === PIPE_FACING_DIRECTION_DOWN) {
+        else if (facingDirection === PipeDirection.DOWN) {
             this.image.src = "/resources/pipe-green-d.png";
         } else {
             throw new Error("The value of facingDirection is not recognized.");

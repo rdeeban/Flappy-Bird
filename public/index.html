@@ -59,12 +59,12 @@
                 if (myScreen === Screen.TITLE) {
                     myScreen = Screen.GAME;
                 } else if (myScreen === Screen.GAME) {
-                    myBird.gravity = -0.5;
+                    myBird.gravity = -0.17;
                 }
             });
             myCanvas.addEventListener('mouseup', function () {
                 if (myScreen === Screen.GAME) {
-                    myBird.gravity = 0.2;
+                    myBird.gravity = 0.07;
                 }
             });
 
@@ -73,7 +73,27 @@
 
         let baseImage = new Image();
         baseImage.src = "/resources/base.png";
-        let gameOver = false;
+        let collisionWithPipeDetected = false;
+        this.numPipesPassed = 0;
+        let digitFileNames = [
+            "0.png",
+            "1.png",
+            "2.png",
+            "3.png",
+            "4.png",
+            "5.png",
+            "6.png",
+            "7.png",
+            "8.png",
+            "9.png"
+        ];
+
+        let digitImages = [];
+        for (let i = 0; i < digitFileNames.length; i++) {
+            let digitImage = new Image();
+            digitImage.src = "/resources/" + digitFileNames[i];
+            digitImages.push(digitImage);
+        }
         this.update = function() {
             if (myScreen === Screen.TITLE) {
                 this.clear();
@@ -82,13 +102,22 @@
                 myBird.update(myFrameNo);
             }
             else if (myScreen === Screen.GAME) {
-                if (myBird.y + myBird.height - 3 > 400) {
+                if (collisionWithPipeDetected || myBird.y + myBird.height - 3 > 400) {
                     let gameOverImage = new Image();
                     gameOverImage.src = "/resources/gameover.png";
                     myCanvas.getContext('2d').drawImage(gameOverImage, CANVAS_WIDTH / 2 - 100, CANVAS_HEIGHT / 2 - 75, 200, 100);
                 } else {
                     this.clear();
-                    myFrameNo++;
+                    myFrameNo ++;
+                    for (let i = 0; i < myPipes.length; i += 2) {
+                        if (checkCollision(myBird, myPipes[i]) || checkCollision(myBird, myPipes[i + 1])) {
+                            let gameOverImage = new Image();
+                            gameOverImage.src = "/resources/gameover.png";
+                            myCanvas.getContext('2d').drawImage(gameOverImage, CANVAS_WIDTH / 2 - 100, CANVAS_HEIGHT / 2 - 75, 200, 100);
+                            collisionWithPipeDetected = true;
+                        }
+                    }
+
                     for (let i = 0; i < myPipes.length; i += 2) {
                         if (myBird.y > myPipes[i + 1].y + myPipes[i + 1].height &&
                             myBird.y + myBird.height < myPipes[i].y &&
@@ -96,12 +125,6 @@
                             if (!myPipeIdsForPassedPipes.includes(myPipes[i].pipeId)) {
                                 myPipeIdsForPassedPipes.push(myPipes[i].pipeId);
                             }
-                        } else {
-                            let gameOverImage = new Image();
-                            gameOverImage.src = "/resources/gameover.png";
-                            myCanvas.getContext('2d').drawImage(gameOverImage, CANVAS_WIDTH / 2 - 100, CANVAS_HEIGHT / 2 - 75, 200, 100);
-                            // gameOver = true;
-                            // return;
                         }
                     }
 
@@ -126,6 +149,11 @@
 
                     myCanvas.getContext('2d').drawImage(baseImage, 0, 400, CANVAS_WIDTH, CANVAS_HEIGHT * 0.3);
                     myBird.newPosition();
+                    this.numPipesPassed = myPipeIdsForPassedPipes.length;
+                    let digits = Array.from(String(this.numPipesPassed), x => Number(x));
+                    for (let i = digits.length - 1; i > -1; i--) {
+                        myCanvas.getContext('2d').drawImage(digitImages[digits[i]], 130 + i * 40, 10, 35, 35);
+                    }
                 }
             }
             else {
@@ -136,6 +164,15 @@
         this.clear = function() {
             myCanvas.getContext('2d').clearRect(0, 0, myCanvas.width, myCanvas.height);
         }
+    }
+
+    function checkCollision(player, obstacle) {
+        return (
+            player.x < obstacle.x + obstacle.width &&
+            player.x + player.width > obstacle.x &&
+            player.y < obstacle.y + obstacle.height &&
+            player.y + player.height > obstacle.y
+        );
     }
 
     function TitleScreen() {
@@ -159,8 +196,6 @@
         backgroundDayImage.src = "/resources/background-day.png";
         let backgroundNightImage = new Image();
         backgroundNightImage.src = "/resources/background-night.png";
-        this.numPipesPassed = 0;
-
         function isDayTime() {
             const now = new Date();
             const currentHour = now.getHours();
@@ -168,34 +203,9 @@
         }
 
         const isDay = isDayTime();
-        let digitFileNames = [
-            "0.png",
-            "1.png",
-            "2.png",
-            "3.png",
-            "4.png",
-            "5.png",
-            "6.png",
-            "7.png",
-            "8.png",
-            "9.png"
-        ];
-
-        let digitImages = [];
-        for (let i = 0; i < digitFileNames.length; i++) {
-            let digitImage = new Image();
-            digitImage.src = "/resources/" + digitFileNames[i];
-            digitImages.push(digitImage);
-        }
-
         this.update = function() {
             let context = myCanvas.getContext('2d');
             context.drawImage(isDay ? backgroundDayImage : backgroundNightImage, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-            this.numPipesPassed = myPipeIdsForPassedPipes.length;
-            let digits = Array.from(String(this.numPipesPassed), x => Number(x));
-            for (let i = digits.length - 1; i > -1; i--) {
-                context.drawImage(digitImages[digits[i]], 130 + i*40, 10, 35, 35);
-            }
         }
     }
 
@@ -204,7 +214,7 @@
         this.y = y;
         this.speedX = 0;
         this.speedY = 0;
-        this.gravity = 0.2;
+        this.gravity = 0.0;
         this.gravitySpeed = 0;
         this.height = height;
         this.width = width;
@@ -239,8 +249,7 @@
         this.image = new Image();
         if (facingDirection === PipeDirection.UP) {
             this.image.src = "/resources/pipe-green-u.png";
-        }
-        else if (facingDirection === PipeDirection.DOWN) {
+        } else if (facingDirection === PipeDirection.DOWN) {
             this.image.src = "/resources/pipe-green-d.png";
         } else {
             throw new Error("The value of facingDirection is not recognized.");
